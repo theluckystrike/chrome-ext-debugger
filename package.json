@@ -1,10 +1,11 @@
 {
-  "name": "webext-debugger",
+  "name": "chrome-ext-debugger",
   "version": "1.0.0",
   "description": "Universal automated testing & debugging toolkit for Chrome extensions",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -18,7 +19,7 @@
     "src"
   ],
   "bin": {
-    "webext-debug": "./bin/cli.js"
+    "chrome-ext-debug": "./bin/cli.js"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
@@ -37,14 +38,33 @@
   },
   "keywords": [
     "chrome-extension",
+    "chrome",
+    "extension",
     "testing",
     "debugging",
+    "debugger",
     "playwright",
     "webextension",
-    "mv3"
+    "mv3",
+    "manifest-v3",
+    "e2e",
+    "service-worker",
+    "cdp",
+    "automation"
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theluckystrike/chrome-ext-debugger.git"
+  },
+  "bugs": {
+    "url": "https://github.com/theluckystrike/chrome-ext-debugger/issues"
+  },
+  "homepage": "https://github.com/theluckystrike/chrome-ext-debugger#readme",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@playwright/test": "^1.50.0",
     "tsx": "^4.19.0"

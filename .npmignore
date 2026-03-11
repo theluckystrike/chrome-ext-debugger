@@ -1,14 +1,26 @@
-# Source and tests
+# Tests
 tests/
 test-pages/
+test-results/
+playwright-report/
 playwright.config.ts
-tsconfig.json
+vitest.config.ts
 
-# Debug scripts (available via src/ but don't need top-level noise)
+# Build config
+tsconfig.json
+tsup.config.*
 *.tsbuildinfo
 
 # Dev config
 .git/
 .github/
 .vscode/
+.eslintrc*
+.prettierrc*
+.editorconfig
 node_modules/
+
+# Misc
+*.tgz
+.DS_Store
+coverage/

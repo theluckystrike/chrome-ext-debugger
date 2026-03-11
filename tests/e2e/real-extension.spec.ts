@@ -1,14 +1,25 @@
 /**
- * Integration smoke test: loads a real Chrome extension (text-expander-pro)
- * and verifies that webext-debugger's core framework works end-to-end.
+ * Integration smoke test: loads a real Chrome MV3 extension and verifies
+ * that webext-debugger's core framework works end-to-end.
  *
- * This is the proof that webext-debugger actually works in practice.
+ * Run with:
+ *   EXTENSION_PATH=/path/to/built/extension npx playwright test --project=e2e
+ *
+ * Skipped automatically when EXTENSION_PATH is not set (e.g. in CI).
  */
 
+import { test as base, expect as baseExpect } from '@playwright/test';
 import { createExtensionFixture } from '../../src/helpers/extension-fixture.js';
 import { createTestServer, type TestServer } from '../../src/helpers/test-server.js';
 
-const EXTENSION_PATH = '/Users/mike/text-expander-pro/dist';
+const EXTENSION_PATH = process.env.EXTENSION_PATH;
+
+if (!EXTENSION_PATH) {
+  base.describe('E2E: real extension', () => {
+    base.skip();
+    base('placeholder', () => {});
+  });
+} else {
 
 const { test, expect } = createExtensionFixture(EXTENSION_PATH);
 
@@ -40,71 +51,44 @@ test('extension loads and has correct ID', async ({ extensionId }) => {
 });
 
 test('manifest is parsed correctly', async ({ manifest, capabilities }) => {
-  // The extension uses i18n for name, so manifest.name is the raw __MSG_ token
-  expect(
-    manifest.name,
-    'manifest.name should be the i18n message token'
-  ).toBe('__MSG_extensionName__');
-
-  expect(
-    manifest.version,
-    'manifest.version should be a semver-like string'
-  ).toMatch(/^\d+\.\d+\.\d+$/);
-
   expect(
     manifest.manifest_version,
     'Should be a Manifest V3 extension'
   ).toBe(3);
 
-  // Verify capability detection
-  expect(capabilities.hasServiceWorker, 'Should detect service worker').toBe(true);
-  expect(capabilities.hasContentScripts, 'Should detect content scripts').toBe(true);
-  expect(capabilities.hasPopup, 'Should detect popup').toBe(true);
-  expect(capabilities.hasOptionsPage, 'Should detect options page').toBe(true);
-  expect(capabilities.hasStorage, 'Should detect storage permission').toBe(true);
-  expect(capabilities.hasContextMenus, 'Should detect contextMenus permission').toBe(true);
-
-  // Verify paths were extracted
   expect(
-    capabilities.serviceWorkerPath,
-    'Should extract service worker path from manifest'
+    manifest.name,
+    'manifest.name should be a non-empty string'
   ).toBeTruthy();
 
   expect(
-    capabilities.popupPath,
-    'Should extract popup path from manifest'
-  ).toBe('src/popup/popup.html');
+    manifest.version,
+    'manifest.version should be a semver-like string'
+  ).toMatch(/^\d+(\.\d+){0,3}$/);
 
-  expect(
-    capabilities.optionsPath,
-    'Should extract options page path from manifest'
-  ).toBe('src/options/options.html');
-
-  // Verify host permissions and content script matches
-  expect(
-    capabilities.hostPermissions,
-    'Should include <all_urls> host permission'
-  ).toContain('<all_urls>');
-
-  expect(
-    capabilities.contentScriptMatches,
-    'Content scripts should match <all_urls>'
-  ).toContain('<all_urls>');
+  // Verify capability detection returns expected shape
+  expect(capabilities).toHaveProperty('hasServiceWorker');
+  expect(capabilities).toHaveProperty('hasContentScripts');
+  expect(capabilities).toHaveProperty('hasPopup');
+  expect(capabilities).toHaveProperty('hasOptionsPage');
+  expect(capabilities).toHaveProperty('hasStorage');
+  expect(capabilities).toHaveProperty('hasContextMenus');
 });
 
-test('service worker is alive', async ({ serviceWorker }) => {
+test('service worker is alive', async ({ serviceWorker, capabilities }) => {
+  test.skip(!capabilities.hasServiceWorker, 'Extension has no service worker');
+
   const result = await serviceWorker.evaluate(() => true);
   expect(result, 'Service worker evaluate(() => true) should return true').toBe(true);
 
   // Verify the SW can access chrome APIs
   const hasRuntime = await serviceWorker.evaluate(() => typeof chrome.runtime !== 'undefined');
   expect(hasRuntime, 'Service worker should have access to chrome.runtime').toBe(true);
-
-  const hasStorage = await serviceWorker.evaluate(() => typeof chrome.storage !== 'undefined');
-  expect(hasStorage, 'Service worker should have access to chrome.storage').toBe(true);
 });
 
-test('can read and write storage', async ({ seedStorage, getStorage, resetStorage }) => {
+test('can read and write storage', async ({ seedStorage, getStorage, resetStorage, capabilities }) => {
+  test.skip(!capabilities.hasStorage, 'Extension does not use storage');
+
   // Seed some data
   const testData = { greeting: 'hello', count: 42, active: true };
   await seedStorage(testData);
@@ -124,11 +108,13 @@ test('can read and write storage', async ({ seedStorage, getStorage, resetStorag
   ).toBe(0);
 });
 
-test('storage persists data correctly', async ({ seedStorage, getStorage }) => {
+test('storage persists data correctly', async ({ seedStorage, getStorage, capabilities }) => {
+  test.skip(!capabilities.hasStorage, 'Extension does not use storage');
+
   const complexData = {
-    snippets: [
-      { trigger: ':sig', expansion: 'Best regards,\nJohn Doe', tags: ['email', 'signature'] },
-      { trigger: ':addr', expansion: '123 Main St\nAnytown, USA', tags: ['address'] },
+    items: [
+      { key: 'a', value: 'alpha', tags: ['first', 'letter'] },
+      { key: 'b', value: 'bravo', tags: ['second'] },
     ],
     settings: {
       enabled: true,
@@ -154,19 +140,19 @@ test('storage persists data correctly', async ({ seedStorage, getStorage }) => {
 
   // Verify nested arrays
   expect(
-    (stored.snippets as any[]).length,
-    'Should persist an array with 2 snippets'
+    (stored.items as any[]).length,
+    'Should persist an array with 2 items'
   ).toBe(2);
 
   expect(
-    (stored.snippets as any[])[0].trigger,
-    'First snippet trigger should be ":sig"'
-  ).toBe(':sig');
+    (stored.items as any[])[0].key,
+    'First item key should be "a"'
+  ).toBe('a');
 
   expect(
-    (stored.snippets as any[])[0].tags,
-    'Snippet tags should be preserved as arrays'
-  ).toEqual(['email', 'signature']);
+    (stored.items as any[])[0].tags,
+    'Item tags should be preserved as arrays'
+  ).toEqual(['first', 'letter']);
 
   // Verify deeply nested objects
   expect(
@@ -191,10 +177,12 @@ test('storage persists data correctly', async ({ seedStorage, getStorage }) => {
   ).toBe(2);
 });
 
-test('popup page loads without errors', async ({ openPage }) => {
+test('popup page loads without errors', async ({ openPage, capabilities }) => {
+  test.skip(!capabilities.hasPopup, 'Extension has no popup');
+
   const consoleErrors: string[] = [];
 
-  const popup = await openPage('src/popup/popup.html');
+  const popup = await openPage(capabilities.popupPath!);
 
   popup.on('console', (msg) => {
     if (msg.type() === 'error') {
@@ -218,10 +206,12 @@ test('popup page loads without errors', async ({ openPage }) => {
   await popup.close();
 });
 
-test('options page loads without errors', async ({ openPage }) => {
+test('options page loads without errors', async ({ openPage, capabilities }) => {
+  test.skip(!capabilities.hasOptionsPage, 'Extension has no options page');
+
   const consoleErrors: string[] = [];
 
-  const options = await openPage('src/options/options.html');
+  const options = await openPage(capabilities.optionsPath!);
 
   options.on('console', (msg) => {
     if (msg.type() === 'error') {
@@ -277,7 +267,9 @@ test('test server serves built-in pages', async () => {
   ).toContain('id="content-editable"');
 });
 
-test('content script context exists on web page', async ({ openWebPage }) => {
+test('content script context exists on web page', async ({ openWebPage, capabilities }) => {
+  test.skip(!capabilities.hasContentScripts, 'Extension has no content scripts');
+
   const url = testServer.url('test-input.html');
 
   const page = await openWebPage(url);
@@ -301,3 +293,5 @@ test('content script context exists on web page', async ({ openWebPage }) => {
 
   await page.close();
 });
+
+} // end if (EXTENSION_PATH)
