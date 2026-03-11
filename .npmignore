@@ -1,0 +1,14 @@
+# Source and tests
+tests/
+test-pages/
+playwright.config.ts
+tsconfig.json
+
+# Debug scripts (available via src/ but don't need top-level noise)
+*.tsbuildinfo
+
+# Dev config
+.git/
+.github/
+.vscode/
+node_modules/

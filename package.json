@@ -1,0 +1,59 @@
+{
+  "name": "webext-debugger",
+  "version": "1.0.0",
+  "description": "Universal automated testing & debugging toolkit for Chrome extensions",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "src"
+  ],
+  "bin": {
+    "webext-debug": "./bin/cli.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "npx playwright test",
+    "test:unit": "vitest run",
+    "test:smoke": "npx playwright test --grep @smoke",
+    "test:integration": "npx playwright test --project=integration",
+    "test:e2e": "npx playwright test --project=e2e",
+    "test:perf": "npx playwright test --project=performance",
+    "debug:state": "npx tsx src/debug/inspect-state.ts",
+    "debug:memory": "npx tsx src/debug/profile-memory.ts",
+    "debug:logs": "npx tsx src/debug/collect-logs.ts",
+    "debug:messages": "npx tsx src/debug/trace-messages.ts",
+    "generate": "npx tsx src/generators/scaffold.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "chrome-extension",
+    "testing",
+    "debugging",
+    "playwright",
+    "webextension",
+    "mv3"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@playwright/test": "^1.50.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.37",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.18"
+  }
+}
